@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header, requests
 from dotenv import load_dotenv
 import json
 import os
@@ -66,14 +66,6 @@ try:
 except Exception as e:
     raise RuntimeError(f"Failed to load STORE_CONFIG:{e}")
 
-
-@app.get("/")
-def home():
-    return {
-        "message": "Backend is working!",
-        "square_key_loaded": SQUARE_KEY is not None,
-        "deputy_key_loaded": DEPUTY_KEY is not None
-    }
 
 def get_store_keys(store_id:str):
     store = STORE_CONFIG.get(store_id)
