@@ -21,7 +21,7 @@ def fetch_square_data(square_key: str, date: str):
     end = f"{date}T23:59:59Z"
 
     #URL to send the API request to:
-    url = "https://connect.squareupsandbox.com/v2/payments/search"
+    url = "https://connect.squareupsandbox.com/v2/orders/search"
     
     #API Request details, including authorisation
     headers = {
@@ -44,12 +44,17 @@ def fetch_square_data(square_key: str, date: str):
     }
 
     response = requests.post(url, headers=headers,json=body)
+    print("Square status:",response.status_code)
+    print("Square raw:",response.text)
 
-    if response.status_code != 200:
-        raise HTTPException(
-            status_code = 500, detail = f"Square API error: {response.text}"
-        )
-    return response.json
+    data = response.json()
+
+    if "errors" in data:
+        raise HTTPException(status_code=500, detail=data["errors"])
+
+    orders = data.get("orders",[])
+
+    return orders
 
 def fetch_deputy_data(deputy_key: str, date: str):
     #TODO: implement Deputy API call
