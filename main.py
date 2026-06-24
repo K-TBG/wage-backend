@@ -31,6 +31,7 @@ def fetch_square_data(square_key: str, date: str):
     }
 
     body = {
+        "location_ids":["sandbox-sq0idb-UXZ5GBqLV6mhVj3AodTXhA"],
         "query":{
             "filter":{
                 "date_time_filter":{
