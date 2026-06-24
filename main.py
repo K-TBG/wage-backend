@@ -76,7 +76,7 @@ def home():
     }
 
 def get_store_keys(store_id:str):
-    store = STORE_CONFIG(store_id)
+    store = STORE_CONFIG.get(store_id)
     if not store:
         raise HTTPException(status_code=400,detail=f"Unknown stored_id: {store_id}")
     square_key = store.get("square")
@@ -109,7 +109,3 @@ def wage_spend(store_id:str, date: str, password:str=Header(None)):
         "date": date,
         "wage_spend": result
     }
-
-@app.get("/debug-password")
-def debug_password():
-    return{"password":API_PASSWORD}
