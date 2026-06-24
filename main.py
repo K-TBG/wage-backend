@@ -1,7 +1,8 @@
-from fastapi import FastAPI, HTTPException, Header, requests
+from fastapi import FastAPI, HTTPException, Header
 from dotenv import load_dotenv
 import json
 import os
+import requests
 
 # Load the variables stored in .env
 load_dotenv
