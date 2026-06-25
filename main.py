@@ -8,7 +8,7 @@ import requests
 average_rate = 17.8
 
 # Load the variables stored in .env
-load_dotenv
+load_dotenv()
 
 API_PASSWORD = os.getenv("API_PASSWORD")
 if not API_PASSWORD:
@@ -54,10 +54,18 @@ def fetch_square_data(square_key: str, square_id, date: str):
 
     if "errors" in data:
         raise HTTPException(status_code=500, detail=data["errors"])
-
+    total_revenue = 0
     orders = data.get("orders",[])
 
-    return orders
+    for order in orders:
+        money = order.get("total_money", {})
+        amount = money.get("amount", 0)
+        total_revenue += amount
+
+    # Convert from pence to pounds
+    total_revenue = total_revenue / 100
+
+    return {"orders":orders,"revenue":total_revenue}
 
 def fetch_deputy_data(deputy_key: str, deputy_id ,date: str):
 
@@ -101,37 +109,41 @@ def fetch_deputy_data(deputy_key: str, deputy_id ,date: str):
 
     return filtered
 
-def calculate_live_wage_spend(timesheets,hourly_rate):
-    total_hours = 0
-    total_cost = 0
+def calculate_wage_percent(revenue, wage_spend):
+    if revenue <= 0:
+        return 0.0
+    return round((wage_spend / revenue)*100,2)
 
+def calculate_wage_spend(square_data, deputy_timesheets):
+    total_hours = 0
     now = datetime.now(timezone.utc)
 
-    for t in timesheets:
+    for t in deputy_timesheets:
         start = datetime.fromisoformat(t["StartTime"])
 
-        if t["EndTime"] is None:
-            #EndTime is None means an IN PROGRESS timesheet:
+        #In-Progress Shift
+        if t.get("EndTime") is None:
             seconds = (now - start).total_seconds()
             hours = seconds / 3600
-        else:
-            #CLOSED Timesheets:
-            if t["TotalTime"] is not None:
-                hours=t["TotalTime"]/3600
-            else:
-                #Fallback if TotalTime is missing (should be impossible)
-                end = datetime.fromisoformat(t["EndTime"])
-                seconds = (end - start).total_seconds()
-                hours = seconds / 3600
         
+        #Closed Shift
+        else:
+            if t.get("TotalTime") is not None:
+                hours = t["TotalTime"]/3600
+            else:
+                #Manual calculation, in case TotalTime is 0 for some reason
+                end = datetime.fromisoformat(t["EndTime"])
+                seconds = (end-start).total_seconds()
+                hours = seconds / 3600
+            
         total_hours += hours
-        total_cost += hours * hourly_rate
-    
-    return total_hours, total_cost
+    total_cost = total_hours * average_rate
 
-def calculate_wage_spend(square_data, deputy_data):
-    #TODO: implement calculation logic
-    return 0
+    return{
+        "total_hours": round(total_hours,2),
+        "total_cost": round(total_cost,2),
+        "average_hourly_rate": average_rate
+    }
 
 app=FastAPI()
 
@@ -177,6 +189,7 @@ def wage_spend(store_id:str, date: str, password:str=Header(None)):
 
     #2. We call Square's API using Square Key.
     square_data = fetch_square_data(square_key,square_loc,date)
+    revenue = square_data["revenue"]
 
     #3. We call Deputy's API using Square Key.
     deputy_data = fetch_deputy_data(deputy_key, deputy_loc,date)
@@ -184,11 +197,20 @@ def wage_spend(store_id:str, date: str, password:str=Header(None)):
     #4. We calculate the wage spend.
     result = calculate_wage_spend(square_data, deputy_data)
 
+    wage_spend = result["total_cost"]
+    hours_worked = result["total_hours"]
+
+    wage_percent = calculate_wage_percent(revenue, wage_spend)
+
     #5. We return a clean json()
     return{
         "store_id": store_id,
         "date": date,
-        "wage_spend": result
+        "revenue": revenue,
+        "hours_worked":hours_worked,
+        "wage_percent": wage_percent,
+        "wage_spend":wage_spend
+
     }
 
 @app.get("/locations")
