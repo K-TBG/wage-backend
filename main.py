@@ -15,7 +15,7 @@ def verify_password(password:str = Header(None)):
     if password != API_PASSWORD:
         raise HTTPException(status_code=401,detail="Invalid or missing password")
 
-def fetch_square_data(square_key: str, date: str):
+def fetch_square_data(square_key: str,square_id, date: str):
     #Convert date to RFC3339 timestamps for Square filtering
     start = f"{date}T00:00:00Z"
     end = f"{date}T23:59:59Z"
@@ -28,12 +28,12 @@ def fetch_square_data(square_key: str, date: str):
     "Authorization": f"Bearer {square_key}",
     "Square-Version": "2025-01-23",
     "Content-Type": "application/json"
-}
+    }
 
     body = {
-        "location_ids": [
-            "test"
-        ],
+        "location_ids": 
+            [square_id],
+
         "query":{
             "filter":{
                 "state_filter":{
@@ -41,8 +41,7 @@ def fetch_square_data(square_key: str, date: str):
                 }
             }
         }
-
-}
+    }
 
     response = requests.post(url, headers=headers,json=body)
     print("Square status:",response.status_code)
@@ -85,6 +84,18 @@ def get_store_keys(store_id:str):
         raise HTTPException(status_code=500, detail=f"Missing API Key for store_id:{store_id}")
     return square_key, deputy_key
 
+def get_store_ids(store_id:str):
+    store1=STORE_CONFIG.get(store_id)
+    if not store1:
+        raise HTTPException(status_code=400, detail=f"Unknown store_id:{store_id}")
+    square_id = store1.get("square_id")
+    deputy_id = store1.get("deputy_id")
+
+    if not square_id or not deputy_id:
+        raise HTTPException(status_code=400, detail =f"Missing Location IDs for store_id: {store_id}")
+    
+    return square_id, deputy_id
+
 @app.get("/wage-spend")
 def wage_spend(store_id:str, date: str, password:str=Header(None)):
     #0. Verify the password is correct!
@@ -108,3 +119,7 @@ def wage_spend(store_id:str, date: str, password:str=Header(None)):
         "date": date,
         "wage_spend": result
     }
+
+@app.get("/locations")
+def list_stores():
+    return {"stores":list(STORE_CONFIG.keys())}
