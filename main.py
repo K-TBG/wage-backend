@@ -34,17 +34,22 @@ def fetch_square_data(square_key: str, square_id, date: str):
     }
 
     body = {
-        "location_ids": 
-            [square_id],
-
-        "query":{
-            "filter":{
-                "state_filter":{
-                    "states":["COMPLETED"]
+    "location_ids": [square_id],
+    "query": {
+        "filter": {
+            "state_filter": {
+                "states": ["COMPLETED"]
+            },
+            "date_time_filter": {
+                "closed_at": {
+                    "start_at": f"{date}T00:00:00+00:00",
+                    "end_at": f"{date}T23:59:59+00:00"
                 }
             }
         }
     }
+}
+
 
     response = requests.post(url, headers=headers,json=body)
     print("Square status:",response.status_code)
@@ -106,6 +111,9 @@ def fetch_deputy_data(deputy_key: str, deputy_id ,date: str):
         timesheets = data  # already a list
 
     filtered = [t for t in timesheets if t.get("Location")==deputy_id]
+    print("Filtered timesheets count:", len(filtered))
+    if filtered:
+        print("Sample timesheet:", filtered[0])
 
     return filtered
 
