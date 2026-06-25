@@ -52,8 +52,6 @@ def fetch_square_data(square_key: str, square_id, date: str):
 
 
     response = requests.post(url, headers=headers,json=body)
-    print("Square status:",response.status_code)
-    print("Square raw:",response.text)
 
     data = response.json()
 
@@ -63,7 +61,7 @@ def fetch_square_data(square_key: str, square_id, date: str):
     orders = data.get("orders",[])
 
     for order in orders:
-        money = order.get("total_money", {})
+        money = order.get("net_total_money", {})
         amount = money.get("amount", 0)
         total_revenue += amount
 
@@ -96,8 +94,6 @@ def fetch_deputy_data(deputy_key: str, deputy_id ,date: str):
     }
 }
     response = requests.post(url,headers=headers,json=body)
-    print("Deputy status:",response.status_code)
-    print("Deputy raw:", response.text)
 
     data=response.json()
 
@@ -111,9 +107,7 @@ def fetch_deputy_data(deputy_key: str, deputy_id ,date: str):
         timesheets = data  # already a list
 
     filtered = [t for t in timesheets if t.get("Location")==deputy_id]
-    print("Filtered timesheets count:", len(filtered))
-    if filtered:
-        print("Sample timesheet:", filtered[0])
+    print("Sample timesheet:",timesheets[0])
 
     return filtered
 
