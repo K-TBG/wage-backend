@@ -25,24 +25,24 @@ def fetch_square_data(square_key: str, date: str):
     
     #API Request details, including authorisation
     headers = {
-        "Authorization": f"Bearer {square_key}",
-        "Content-Type": "application/json",
-        "Square-Version":"2024-06-20"
-    }
+    "Authorization": f"Bearer {square_key}",
+    "Square-Version": "2025-01-23",
+    "Content-Type": "application/json"
+}
 
     body = {
-        "location_ids":["sandbox-sq0idb-UXZ5GBqLV6mhVj3AodTXhA"],
+        "location_ids": [
+            "test"
+        ],
         "query":{
             "filter":{
-                "date_time_filter":{
-                    "created_at":{
-                        "start_at":start,
-                        "end_at":end
-                    }
+                "state_filter":{
+                    "states":["COMPLETED"]
                 }
             }
         }
-    }
+
+}
 
     response = requests.post(url, headers=headers,json=body)
     print("Square status:",response.status_code)
