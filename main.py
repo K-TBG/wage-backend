@@ -121,6 +121,8 @@ def calculate_wage_spend(square_data, deputy_timesheets):
     now = datetime.now(timezone.utc)
 
     for t in deputy_timesheets:
+        if t.get("IsLeave"):
+            continue
         start = datetime.fromisoformat(t["StartTime"])
 
         #In-Progress Shift
