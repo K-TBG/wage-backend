@@ -85,11 +85,12 @@ def get_store_keys(store_id:str):
     return square_key, deputy_key
 
 def get_store_ids(store_id:str):
-    store1=STORE_CONFIG.get(store_id)
-    if not store1:
+    store=STORE_CONFIG.get(store_id)
+
+    if not store:
         raise HTTPException(status_code=400, detail=f"Unknown store_id:{store_id}")
-    square_id = store1.get("square_id")
-    deputy_id = store1.get("deputy_id")
+    square_id = store.get("square_id")
+    deputy_id = store.get("deputy_id")
 
     if not square_id or not deputy_id:
         raise HTTPException(status_code=400, detail =f"Missing Location IDs for store_id: {store_id}")
