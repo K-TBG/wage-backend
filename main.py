@@ -103,7 +103,7 @@ def wage_spend(store_id:str, date: str, password:str=Header(None)):
     
     #1. We get the correct API keys for the given store, using function get_store_keys:
     square_key, deputy_key = get_store_keys(store_id)
-    square_loc,deputy_loc = get_location_ids(store_id)
+    square_loc,deputy_loc = get_store_ids(store_id)
 
     #2. We call Square's API using Square Key.
     square_data = fetch_square_data(square_key,square_loc,date)
