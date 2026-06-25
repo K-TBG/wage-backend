@@ -1,8 +1,11 @@
 from fastapi import FastAPI, HTTPException, Header
 from dotenv import load_dotenv
+from datetime import datetime, timezone
 import json
 import os
 import requests
+
+average_rate = 17.8
 
 # Load the variables stored in .env
 load_dotenv
@@ -57,8 +60,70 @@ def fetch_square_data(square_key: str, square_id, date: str):
     return orders
 
 def fetch_deputy_data(deputy_key: str, deputy_id ,date: str):
-    #TODO: implement Deputy API call
-    return {}
+    
+    url = "https://02ccfd29062105.uk.deputy.com/api/v1/resource/Timesheet/QUERY"
+    
+    headers = {
+        "Authorization":f"Bearer {deputy_key}",
+        "Content-Type":"application/json"
+    }
+
+    body = {
+    "search": {
+        "s1": {
+            "field": "Date",
+            "type": "ge",
+            "data": f"{date}T00:00:00"
+        },
+        "s2": {
+            "field": "Date",
+            "type": "le",
+            "data": f"{date}T23:59:59"
+        }
+    }
+}
+    response = requests.post(url,headers=headers,json=body)
+    print("Deputy status:",response.status_code)
+    print("Deputy raw:", response.text)
+
+    data=response.json()
+
+    if "Errors" in data:
+        raise HTTPException(status_code=500, detail = data["Errors"])
+    
+    #Filter by location
+    timesheets = data.get("data",[])
+    filtered = [t for t in timesheets if t.get("Location")==deputy_id]
+
+    return filtered
+
+def calculate_live_wage_spend(timesheets,hourly_rate):
+    total_hours = 0
+    total_cost = 0
+
+    now = datetime.now(timezone.utc)
+
+    for t in timesheets:
+        start = datetime.fromisoformat(t["StartTime"])
+
+        if t["EndTime"] is None:
+            #EndTime is None means an IN PROGRESS timesheet:
+            seconds = (now - start).total_seconds()
+            hours = seconds / 3600
+        else:
+            #CLOSED Timesheets:
+            if t["TotalTime"] is not None:
+                hours=t["TotalTime"]/3600
+            else:
+                #Fallback if TotalTime is missing (should be impossible)
+                end = datetime.fromisoformat(t["EndTime"])
+                seconds = (end - start).total_seconds()
+                hours = seconds / 3600
+        
+        total_hours += hours
+        total_cost += hours * hourly_rate
+    
+    return total_hours, total_cost
 
 def calculate_wage_spend(square_data, deputy_data):
     #TODO: implement calculation logic
