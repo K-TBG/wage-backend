@@ -92,7 +92,11 @@ def fetch_deputy_data(deputy_key: str, deputy_id ,date: str):
         raise HTTPException(status_code=500, detail = data["Errors"])
     
     #Filter by location
-    timesheets = data.get("data",[])
+    if isinstance(data, dict):
+        timesheets = data.get("data", [])
+    else:
+        timesheets = data  # already a list
+
     filtered = [t for t in timesheets if t.get("Location")==deputy_id]
 
     return filtered
