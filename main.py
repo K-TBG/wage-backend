@@ -121,26 +121,43 @@ def calculate_wage_spend(square_data, deputy_timesheets):
     now = datetime.now(timezone.utc)
 
     for t in deputy_timesheets:
-        if t.get("IsLeave")==True:
-            continue
-        start = datetime.fromisoformat(t["StartTime"])
 
-        #In-Progress Shift
-        if t.get("EndTime") is None:
+        # Skip leave entries (holiday, sick, etc.)
+        if t.get("IsLeave") == True:
+            continue
+
+        # Parse StartTime (Deputy sometimes returns UNIX timestamps)
+        start_raw = t["StartTime"]
+        if isinstance(start_raw, (int, float)):
+            start = datetime.fromtimestamp(start_raw, tz=timezone.utc)
+        else:
+            start = datetime.fromisoformat(start_raw)
+
+        # Parse EndTime (may be None or UNIX timestamp)
+        end_raw = t.get("EndTime")
+        if end_raw is None:
+            end = None
+        elif isinstance(end_raw, (int, float)):
+            end = datetime.fromtimestamp(end_raw, tz=timezone.utc)
+        else:
+            end = datetime.fromisoformat(end_raw)
+
+        # In‑progress shift
+        if end is None:
             seconds = (now - start).total_seconds()
             hours = seconds / 3600
-        
-        #Closed Shift
+
+        # Closed shift
         else:
             if t.get("TotalTime") is not None:
-                hours = t["TotalTime"]/3600
+                hours = t["TotalTime"] / 3600
             else:
-                #Manual calculation, in case TotalTime is 0 for some reason
-                end = datetime.fromisoformat(t["EndTime"])
-                seconds = (end-start).total_seconds()
+                # Manual fallback
+                seconds = (end - start).total_seconds()
                 hours = seconds / 3600
-            
+
         total_hours += hours
+
     total_cost = total_hours * average_rate
 
     return{
