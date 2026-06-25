@@ -15,7 +15,7 @@ def verify_password(password:str = Header(None)):
     if password != API_PASSWORD:
         raise HTTPException(status_code=401,detail="Invalid or missing password")
 
-def fetch_square_data(square_key: str,square_id, date: str):
+def fetch_square_data(square_key: str, square_id, date: str):
     #Convert date to RFC3339 timestamps for Square filtering
     start = f"{date}T00:00:00Z"
     end = f"{date}T23:59:59Z"
@@ -105,10 +105,10 @@ def wage_spend(store_id:str, date: str, password:str=Header(None)):
     square_key, deputy_key = get_store_keys(store_id)
 
     #2. We call Square's API using Square Key.
-    square_data = fetch_square_data(square_key,date)
+    square_data = fetch_square_data(square_key,store_id,date)
 
     #3. We call Deputy's API using Square Key.
-    deputy_data = fetch_deputy_data(deputy_key,date)
+    deputy_data = fetch_deputy_data(deputy_key, store_id, date)
 
     #4. We calculate the wage spend.
     result = calculate_wage_spend(square_data, deputy_data)
