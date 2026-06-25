@@ -24,7 +24,7 @@ def fetch_square_data(square_key: str, square_id, date: str):
     end = f"{date}T23:59:59Z"
 
     #URL to send the API request to:
-    url = "https://connect.squareupsandbox.com/v2/orders/search"
+    url = "https://connect.squareup.com/v2/orders/search"
     
     #API Request details, including authorisation
     headers = {
@@ -60,7 +60,7 @@ def fetch_square_data(square_key: str, square_id, date: str):
     return orders
 
 def fetch_deputy_data(deputy_key: str, deputy_id ,date: str):
-    
+
     url = "https://02ccfd29062105.uk.deputy.com/api/v1/resource/Timesheet/QUERY"
     
     headers = {
