@@ -56,7 +56,7 @@ def fetch_square_data(square_key: str, square_id, date: str):
 
     return orders
 
-def fetch_deputy_data(deputy_key: str, date: str):
+def fetch_deputy_data(deputy_key: str, deputy_id ,date: str):
     #TODO: implement Deputy API call
     return {}
 
