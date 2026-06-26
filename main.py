@@ -85,18 +85,7 @@ def fetch_deputy_data(deputy_key: str, deputy_id, date: str):
 
     # Filter by StartTime instead of Date (Date is unreliable)
     body = {
-        "search": {
-            "s1": {
-                "field": "StartTime",
-                "type": "ge",
-                "data": f"{date}T00:00:00{tz}"
-            },
-            "s2": {
-                "field": "StartTime",
-                "type": "le",
-                "data": f"{date}T23:59:59{tz}"
-            }
-        }
+        "search": {}
     }
 
     response = requests.post(url, headers=headers, json=body)
@@ -114,6 +103,7 @@ def fetch_deputy_data(deputy_key: str, deputy_id, date: str):
     print("Timesheet count:", len(timesheets))
 
     # Print first few entries safely
+    print("Returned:",len(timesheets))
     for i, t in enumerate(timesheets[:5]):
         print(f"Timesheet {i}:", t)
 
