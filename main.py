@@ -17,14 +17,17 @@ if not API_PASSWORD:
 def filter_timesheets_by_location(timesheets, deputy_id):
     filtered = []
     for t in timesheets:
-        company = (
-            t.get("_DPMetaData", {})
-             .get("OperationalUnitInfo", {})
-             .get("Company")
-        )
-        if company == deputy_id:
+        # Safely extract Company ID
+        company_id = (
+            (t.get("_DPMetaData") or {})
+            .get("OperationalUnitInfo") or {}
+        ).get("Company")
+
+        if company_id == deputy_id:
             filtered.append(t)
+
     return filtered
+
 
 
 def verify_password(password:str = Header(None)):
