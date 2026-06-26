@@ -106,10 +106,10 @@ def fetch_deputy_data(deputy_key: str, deputy_id ,date: str):
     else:
         timesheets = data  # already a list
 
-    filtered = [t for t in timesheets if t.get("Location")==deputy_id]
+    # filtered = [t for t in timesheets if t.get("Location")==deputy_id]
     print("Sample timesheet:",timesheets[0])
 
-    return filtered
+    return timesheets
 
 def calculate_wage_percent(revenue, wage_spend):
     if revenue <= 0:
