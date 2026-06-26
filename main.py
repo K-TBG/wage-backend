@@ -92,7 +92,7 @@ def fetch_deputy_data(deputy_key: str, deputy_id, date: str):
     # Hard‑coded for BST (+01:00) for now
     tz = "+01:00"
 
-    url = "https://02ccfd29062105.uk.deputy.com/api/v1/resource/Timesheet/QUERY"
+    url = "https://02ccfd29062105.uk.deputy.com/api/v1/me"
     
     headers = {
         "Authorization": f"Bearer {deputy_key}",
