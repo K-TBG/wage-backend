@@ -70,44 +70,52 @@ def fetch_square_data(square_key: str, square_id, date: str):
 
     return {"orders":orders,"revenue":total_revenue}
 
-def fetch_deputy_data(deputy_key: str, deputy_id ,date: str):
+def fetch_deputy_data(deputy_key: str, deputy_id, date: str):
+
+    # Deputy requires timezone in the timestamp format
+    # Hard‑coded for BST (+01:00) for now
+    tz = "+01:00"
 
     url = "https://02ccfd29062105.uk.deputy.com/api/v1/resource/Timesheet/QUERY"
     
     headers = {
-        "Authorization":f"Bearer {deputy_key}",
-        "Content-Type":"application/json"
+        "Authorization": f"Bearer {deputy_key}",
+        "Content-Type": "application/json"
     }
 
+    # Filter by StartTime instead of Date (Date is unreliable)
     body = {
-    "search": {
-        "s1": {
-            "field": "StartTime",
-            "type": "ge",
-            "data": f"{date}T00:00:00"
-        },
-        "s2": {
-            "field": "StartTime",
-            "type": "le",
-            "data": f"{date}T23:59:59"
+        "search": {
+            "s1": {
+                "field": "StartTime",
+                "type": "ge",
+                "data": f"{date}T00:00:00{tz}"
+            },
+            "s2": {
+                "field": "StartTime",
+                "type": "le",
+                "data": f"{date}T23:59:59{tz}"
+            }
         }
     }
-}
-    response = requests.post(url,headers=headers,json=body)
 
-    data=response.json()
+    response = requests.post(url, headers=headers, json=body)
+    data = response.json()
 
     if "Errors" in data:
-        raise HTTPException(status_code=500, detail = data["Errors"])
-    
-    #Filter by location
+        raise HTTPException(status_code=500, detail=data["Errors"])
+
+    # Deputy sometimes returns dict, sometimes list
     if isinstance(data, dict):
         timesheets = data.get("data", [])
     else:
-        timesheets = data  # already a list
+        timesheets = data
 
-    # filtered = [t for t in timesheets if t.get("Location")==deputy_id]
-    print("Sample timesheet:",timesheets[0])
+    print("Timesheet count:", len(timesheets))
+
+    # Print first few entries safely
+    for i, t in enumerate(timesheets[:5]):
+        print(f"Timesheet {i}:", t)
 
     return timesheets
 
