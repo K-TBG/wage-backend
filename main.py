@@ -82,12 +82,12 @@ def fetch_deputy_data(deputy_key: str, deputy_id ,date: str):
     body = {
     "search": {
         "s1": {
-            "field": "Date",
+            "field": "StartTime",
             "type": "ge",
             "data": f"{date}T00:00:00"
         },
         "s2": {
-            "field": "Date",
+            "field": "StartTime",
             "type": "le",
             "data": f"{date}T23:59:59"
         }
