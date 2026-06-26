@@ -14,6 +14,19 @@ API_PASSWORD = os.getenv("API_PASSWORD")
 if not API_PASSWORD:
     raise RuntimeError("API_PASSWORD is not set")
 
+def filter_timesheets_by_location(timesheets, deputy_id):
+    filtered = []
+    for t in timesheets:
+        company = (
+            t.get("_DPMetaData", {})
+             .get("OperationalUnitInfo", {})
+             .get("Company")
+        )
+        if company == deputy_id:
+            filtered.append(t)
+    return filtered
+
+
 def verify_password(password:str = Header(None)):
     if password != API_PASSWORD:
         raise HTTPException(status_code=401,detail="Invalid or missing password")
@@ -99,6 +112,8 @@ def fetch_deputy_data(deputy_key: str, deputy_id, date: str):
         timesheets = data.get("data", [])
     else:
         timesheets = data
+
+    timesheets = filter_timesheets_by_location(timesheets, deputy_id)
 
     print("Timesheet count:", len(timesheets))
 
