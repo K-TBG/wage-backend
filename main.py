@@ -172,7 +172,7 @@ def wage_spend(store_id: str, date: str, password: str = Header(None)):
 
     deputy_entries = fetch_deputy_data(deputy_key, deputy_company_id, date)
     revenue = fetch_square_revenue(square_key, square_id, date)
-    wage_data = calculate_wage_spend(deputy_entries, hourly_rate=12.0)
+    wage_data = calculate_wage_spend(deputy_entries, hourly_rate= average_rate)
 
     wage_percent = 0.0
     if revenue > 0:
