@@ -134,7 +134,7 @@ def calculate_wage_spend(timesheets, hourly_rate: float):
 
         if start is None:
             continue
-        if end > int(time.tim()):
+        if end > int(time.time()):
             end = int(time.time())
 
         hours = (end - start) / 3600
