@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Header
 from dotenv import load_dotenv
-from datetime import datetime
+from datetime import datetime, date, timedelta
 import json
 import os
 import requests
@@ -187,6 +187,50 @@ def wage_spend(store_id: str, date: str, password: str = Header(None)):
         "wage_percent": wage_percent,
         "hours": wage_data["total_hours"]
     }
+
+@app.get("/weekly-report")
+def weekly_report(start:str, password: str = Header(None)):
+    verify_password(password)
+
+    #Start Date:
+    try:
+        start_date = datetime.strptime(start, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code = 400, detail = "Invalid start date format. Use YYY-MM-DD.")
+
+    #7 day range:
+    days = [(start_date + timedelta(days=i)) for i in range (7)]
+    rows = []
+
+    #Loop through all locations
+    for store_id, store_info in STORE_CONFIG.items():
+        square_key = store_info["square"]
+        deputy_key = store_info["deputy"]
+        square_loc_id = store_info["square_id"]
+        deputy_company_id = store_info["deputy_id"]
+
+        for day in days:
+            day_str = day.strftime("%Y-%m-%d")
+            deputy_entries = fetch_deputy_data(deputy_key, deputy_company_id,day_str)
+            revenue = fetch_square_revenue(square_key,square_loc_id,day_str)
+            wage_data = calculate_wage_spend(deputy_entries, average_rate)
+
+            wage_percent = 0.0
+            if revenue > 0:
+                wage_percent = round((wage_data["total_cost"]/revenue)*100,2)
+            
+            #Build flat row for power query:
+
+            rows.append({
+                "location":store_id,
+                "date":day_str,
+                "percent":wage_percent,
+                "revenue":revenue,
+                "wage_spend":wage_data["total_cost"],
+                "hours":wage_data["total_hours"],
+                "timesheets":wage_data["timesheet_count"]
+                })
+    return rows
 
 #  -------------------
 # |  DEBUG ENDPOINTS  |
