@@ -101,7 +101,6 @@ def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
 
     r = requests.post(url, headers=headers, json=body)
     data = r.json()
-    print(data)
 
     if "errors" in data:
         raise Exception(data["errors"])
@@ -157,10 +156,6 @@ def time_processing (date_raw):
 
     start_unix = int(start.timestamp())
     end_unix = int(end.timestamp())
-
-    print(start_unix)
-    print(end_unix)
-
     return start_unix, end_unix
 
 @app.get("/wage-spend")
