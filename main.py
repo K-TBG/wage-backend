@@ -85,6 +85,9 @@ def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
 
     page = 1
     cursor = None
+    revenue = 0.0
+    taxes = 0.0
+    tips = 0.0
 
     while True:
         body = {
@@ -113,10 +116,6 @@ def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
 
         if "errors" in data:
             raise Exception(data["errors"])
-
-        revenue = 0.0
-        taxes = 0.0
-        tips = 0.0
 
         for order in data.get("orders", []):
             money = order.get("total_money", {}).get("amount", 0)
