@@ -76,53 +76,69 @@ def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
     end = f"{date}T23:59:59Z"
 
     url = "https://connect.squareup.com/v2/orders/search"
-    headers = {
-        "Authorization": f"Bearer {square_key}",
-        "Square-Version": "2025-01-23",
-        "Content-Type": "application/json"
-    }
 
-    body = {
-        "location_ids": [square_location_id],
-        "query": {
-            "filter": {
-                "date_time_filter": {
-                    "created_at": {
-                        "start_at": start,
-                        "end_at": end
+    headers = {
+            "Authorization": f"Bearer {square_key}",
+            "Square-Version": "2025-01-23",
+            "Content-Type": "application/json"
+        }
+
+    page = 1
+    cursor = None
+
+    while True:
+        body = {
+            "location_ids": [square_location_id],
+            "query": {
+                "filter": {
+                    "date_time_filter": {
+                        "created_at": {
+                            "start_at": start,
+                            "end_at": end
+                        }
+                    },
+                    "state_filter": {
+                        "states": ["COMPLETED"]
                     }
-                },
-                "state_filter": {
-                    "states": ["COMPLETED"]
                 }
             }
         }
-    }
-
-    r = requests.post(url, headers=headers, json=body)
-    data = r.json()
-
-    if "errors" in data:
-        raise Exception(data["errors"])
-
-    revenue = 0.0
-    taxes = 0.0
-    tips = 0.0
-
-    for order in data.get("orders", []):
-        money = order.get("total_money", {}).get("amount", 0)
-        revenue += money / 100.0
-
-        tax = order.get("total_tax_money",{}).get("amount",0)
-        taxes += tax / 100.0
-
-        tip = order.get("total_tip_money",{}).get("amount",0)
-        tips += tip / 100.0
     
-    revenue -= (taxes + tips)
+        if cursor:
+            body["cursor"] = cursor
 
-    print(len(data.get("orders",[])))
-    print(data.get("cursor"))
+
+        r = requests.post(url, headers=headers, json=body)
+        data = r.json()
+
+        if "errors" in data:
+            raise Exception(data["errors"])
+
+        revenue = 0.0
+        taxes = 0.0
+        tips = 0.0
+
+        for order in data.get("orders", []):
+            money = order.get("total_money", {}).get("amount", 0)
+            revenue += money / 100.0
+
+            tax = order.get("total_tax_money",{}).get("amount",0)
+            taxes += tax / 100.0
+
+            tip = order.get("total_tip_money",{}).get("amount",0)
+            tips += tip / 100.0
+    
+        cursor = data.get("cursor")
+
+        print(f"Page {page}: {len(data.get('orders',[]))} orders")
+        print(f"Cursor: {cursor}")
+
+        page += 1
+
+        if not cursor:
+            break
+
+    revenue -= (taxes + tips)
 
     return round(revenue, 2)
 
