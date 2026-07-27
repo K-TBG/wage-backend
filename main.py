@@ -121,7 +121,11 @@ def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
     
     revenue -= (taxes + tips)
 
+    print(len(data.get("orders",[])))
+    print(data.get("cursor"))
+
     return round(revenue, 2)
+
 
 def calculate_wage_spend(timesheets, hourly_rate: float):
     
