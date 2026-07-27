@@ -83,7 +83,7 @@ def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
             "Content-Type": "application/json"
         }
 
-    page = 1
+    # page = 1
     cursor = None
     revenue = 0.0
     taxes = 0.0
@@ -129,10 +129,9 @@ def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
     
         cursor = data.get("cursor")
 
-        print(f"Page {page}: {len(data.get('orders',[]))} orders")
-        print(f"Cursor: {cursor}")
-
-        page += 1
+        # print(f"Page {page}: {len(data.get('orders',[]))} orders")
+        # print(f"Cursor: {cursor}")
+        # page += 1
 
         if not cursor:
             break
