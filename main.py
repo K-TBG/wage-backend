@@ -5,6 +5,28 @@ import json
 import os
 import requests
 import time
+
+import sqlite3
+
+def init_db():
+    conn = sqlite3.connect("revenue.db")
+    cur = conn.cursor()
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS daily_revenue (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT NOT NULL,
+            location TEXT NOT NULL,
+            category TEXT NOT NULL,
+            amount REAL NOT NULL,
+            created_at TEXT NOT NULL
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
+
 app = FastAPI()
 
 average_rate = 17.8
@@ -70,6 +92,21 @@ def fetch_deputy_data(deputy_key: str, deputy_company_id: int, date: str):
     data = r.json()
     
     return data
+
+
+    url = "https://connect.squareup.com/v2/orders/search"
+    headers = {
+                "Authorization": f"Bearer {square_key}",
+                "Square-Version": "2025-01-23",
+                "Content-Type": "application/json"
+            }
+    cursor = None
+
+
+    
+
+    return ()
+
 
 def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
     start = f"{date}T00:00:00Z"
@@ -139,7 +176,6 @@ def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
     revenue -= (taxes + tips)
 
     return round(revenue, 2)
-
 
 def calculate_wage_spend(timesheets, hourly_rate: float):
     
@@ -245,9 +281,9 @@ def weekly_report(start:str, password: str = Header(None)):
                 })
     return rows
 
-#  -------------------
-# |  DEBUG ENDPOINTS  |
-#  -------------------
+#        ,-------------------,
+# |------|  DEBUG ENDPOINTS  |-------|
+#        '-------------------'
 
 @app.get("/debug-deputy")
 def debug_deputy(store_id: str, date: str, password: str = Header(None)):
