@@ -5,8 +5,11 @@ import json
 import os
 import requests
 import time
-
 import sqlite3
+
+#        ,-----------------------,      
+# |------|   BASIC ARCHITECTURE  |-------
+#        '-----------------------'
 
 def init_db():
     conn = sqlite3.connect("revenue.db")
@@ -26,7 +29,6 @@ def init_db():
     conn.commit()
     conn.close()
 
-
 app = FastAPI()
 
 average_rate = 17.8
@@ -43,6 +45,16 @@ try:
     STORE_CONFIG = json.loads(os.getenv("STORE_CONFIG"))
 except Exception as e:
     raise RuntimeError(f"Failed to load STORE_CONFIG: {e}")
+
+category_map = { #A FULL LIST OF CORRESPONDING CATEGORIES NEEDS TO BE BUILT FOR ALL SITES
+    "food":["mains","piano plates"],
+    "coffee":["specialty coffee","iced coffee"],
+    "alcohol":["beers","wines","cocktails"]
+    }
+
+#        ,-----------------------,      
+# |------|     FUNCTION LIST     |-------
+#        '-----------------------'
 
 
 def verify_password(password: str = Header(None)):
@@ -106,7 +118,6 @@ def fetch_deputy_data(deputy_key: str, deputy_company_id: int, date: str):
     
 
     return ()
-
 
 def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
     start = f"{date}T00:00:00Z"
@@ -212,6 +223,10 @@ def time_processing (date_raw):
     end_unix = int(end.timestamp())
     return start_unix, end_unix
 
+#        ,-----------------------,
+# |------|     API ENDPOINTS     |-------|
+#        '-----------------------'
+
 @app.get("/wage-spend")
 def wage_spend(store_id: str, date: str, password: str = Header(None)):
     verify_password(password)
@@ -227,6 +242,10 @@ def wage_spend(store_id: str, date: str, password: str = Header(None)):
     if revenue > 0:
         wage_percent = round((wage_data["total_cost"] / revenue) * 100, 2)
 
+    kplh = revenue / wage_data["total_hours"]
+    ideal_revenue = (wage_data["total_hours"]*average_rate)/0.3
+    ideal_hours = revenue / (average_rate*wage_data["total_hours"])
+
     return {
         "store": store_id,
         "date": date,
@@ -234,7 +253,10 @@ def wage_spend(store_id: str, date: str, password: str = Header(None)):
         "wage_spend": wage_data["total_cost"],
         "timesheet _count":wage_data["timesheet_count"],
         "wage_percent": wage_percent,
-        "hours": wage_data["total_hours"]
+        "hours": wage_data["total_hours"],
+        "KPLH": kplh,
+        "ideal revenue": ideal_revenue,
+        "ideal hours": ideal_hours
     }
 
 @app.get("/weekly-report")
@@ -281,9 +303,9 @@ def weekly_report(start:str, password: str = Header(None)):
                 })
     return rows
 
-#        ,-------------------,
-# |------|  DEBUG ENDPOINTS  |-------|
-#        '-------------------'
+#        ,-----------------------,
+# |------|  DEBUGGING ENDPOINTS  |-------|
+#        '-----------------------'
 
 @app.get("/debug-deputy")
 def debug_deputy(store_id: str, date: str, password: str = Header(None)):
