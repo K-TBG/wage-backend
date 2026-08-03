@@ -11,24 +11,6 @@ import sqlite3
 # |------|   BASIC ARCHITECTURE  |-------
 #        '-----------------------'
 
-def init_db():
-    conn = sqlite3.connect("revenue.db")
-    cur = conn.cursor()
-
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS daily_revenue (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date TEXT NOT NULL,
-            location TEXT NOT NULL,
-            category TEXT NOT NULL,
-            amount REAL NOT NULL,
-            created_at TEXT NOT NULL
-        )
-    """)
-
-    conn.commit()
-    conn.close()
-
 app = FastAPI()
 
 average_rate = 17.8
@@ -242,7 +224,7 @@ def wage_spend(store_id: str, date: str, password: str = Header(None)):
     if revenue > 0:
         wage_percent = round((wage_data["total_cost"] / revenue) * 100, 2)
 
-    kplh = revenue / wage_data["total_hours"]
+    splh = round(revenue / wage_data["total_hours"],2)
     ideal_revenue = (wage_data["total_hours"]*average_rate)/0.3
     ideal_hours = revenue / (average_rate*wage_data["total_hours"])
 
@@ -251,10 +233,10 @@ def wage_spend(store_id: str, date: str, password: str = Header(None)):
         "date": date,
         "revenue": revenue,
         "wage_spend": wage_data["total_cost"],
-        "timesheet _count":wage_data["timesheet_count"],
+        "timesheet_count":wage_data["timesheet_count"],
         "wage_percent": wage_percent,
         "hours": wage_data["total_hours"],
-        "KPLH": kplh,
+        "SPLH": splh,
         "ideal_revenue": ideal_revenue,
         "ideal_hours": ideal_hours
     }
