@@ -255,8 +255,8 @@ def wage_spend(store_id: str, date: str, password: str = Header(None)):
         "wage_percent": wage_percent,
         "hours": wage_data["total_hours"],
         "KPLH": kplh,
-        "ideal revenue": ideal_revenue,
-        "ideal hours": ideal_hours
+        "ideal_revenue": ideal_revenue,
+        "ideal_hours": ideal_hours
     }
 
 @app.get("/weekly-report")
