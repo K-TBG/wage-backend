@@ -226,7 +226,7 @@ def wage_spend(store_id: str, date: str, password: str = Header(None)):
 
     splh = round(revenue / wage_data["total_hours"],2)
     ideal_revenue = (wage_data["total_hours"]*average_rate)/0.3
-    ideal_hours = revenue / (average_rate*wage_data["total_hours"])
+    ideal_hours = (revenue*0.3)/average_rate
 
     return {
         "store": store_id,
