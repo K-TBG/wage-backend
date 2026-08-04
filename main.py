@@ -236,7 +236,7 @@ def wage_spend(store_id: str, date: str, password: str = Header(None)):
         "timesheet_count":wage_data["timesheet_count"],
         "wage_percent": wage_percent,
         "hours": wage_data["total_hours"],
-        "SPLH": splh,
+        "splh": splh,
         "ideal_revenue": ideal_revenue,
         "ideal_hours": ideal_hours
     }
