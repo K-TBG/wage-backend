@@ -152,7 +152,7 @@ def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
         for order in data.get("orders", []):
             money = order.get("total_money", {}).get("amount", 0)
             revenue += money / 100.0
-            payment_amounts.append(revenue)
+            payment_amounts.append(money)
 
             tax = order.get("total_tax_money",{}).get("amount",0)
             taxes += tax / 100.0
