@@ -43,7 +43,7 @@ def verify_password(password: str = Header(None)):
     if password != API_PASSWORD:
         raise HTTPException(status_code=401, detail="Invalid or missing password")
 
-def get_store_keys(store_id: str):
+def get_store_keys(store_id:str):
     store = STORE_CONFIG.get(store_id)
     if not store:
         raise HTTPException(status_code=400, detail=f"Unknown store_id: {store_id}")
@@ -167,6 +167,7 @@ def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
             break
 
     revenue -= (taxes + tips)
+    print(data)
 
     return round(revenue, 2)
 
@@ -228,6 +229,7 @@ def wage_spend(store_id: str, date: str, password: str = Header(None)):
     ideal_revenue = (wage_data["total_hours"]*average_rate)/0.3
     ideal_hours = (revenue*0.3)/average_rate
 
+    
     return {
         "store": store_id,
         "date": date,
