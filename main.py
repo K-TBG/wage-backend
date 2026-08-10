@@ -119,6 +119,8 @@ def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
     taxes = 0.0
     tips = 0.0
 
+    payment_amounts = ()
+
     while True:
         body = {
             "location_ids": [square_location_id],
@@ -150,6 +152,7 @@ def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
         for order in data.get("orders", []):
             money = order.get("total_money", {}).get("amount", 0)
             revenue += money / 100.0
+            payment_amounts.append(revenue)
 
             tax = order.get("total_tax_money",{}).get("amount",0)
             taxes += tax / 100.0
@@ -167,7 +170,7 @@ def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
             break
 
     revenue -= (taxes + tips)
-    print(data)
+    print(payment_amounts)
 
     return round(revenue, 2)
 
