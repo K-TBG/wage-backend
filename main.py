@@ -171,6 +171,7 @@ def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
 
     revenue -= (taxes + tips)
     print(payment_amounts)
+    print(len(payment_amounts) &" transactions processed on this date")
 
     return round(revenue, 2)
 
