@@ -119,7 +119,7 @@ def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
     taxes = 0.0
     tips = 0.0
 
-    payment_amounts = {}
+    payment_amounts = []
 
     while True:
         body = {
