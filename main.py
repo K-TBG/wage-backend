@@ -105,21 +105,58 @@ def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
     start = f"{date}T00:00:00Z"
     end = f"{date}T23:59:59Z"
 
-    url = "https://connect.squareup.com/v2/orders/search"
-
     headers = {
-            "Authorization": f"Bearer {square_key}",
-            "Square-Version": "2025-01-23",
-            "Content-Type": "application/json"
-        }
+        "Authorization": f"Bearer {square_key}",
+        "Square-Version": "2025-01-23",
+        "Content-Type": "application/json"
+    }
 
-    # page = 1
+    # ---------------------------------------------------------
+    # 1. FETCH PAYMENTS API (authoritative list of payments)
+    # ---------------------------------------------------------
+    payments_url = "https://connect.squareup.com/v2/payments"
+    payments = []
     cursor = None
-    revenue = 0.0
-    taxes = 0.0
-    tips = 0.0
 
+    while True:
+        params = {
+            "begin_time": start,
+            "end_time": end,
+            "location_id": square_location_id,
+            "sort_order": "ASC"
+        }
+        if cursor:
+            params["cursor"] = cursor
+
+        r = requests.get(payments_url, headers=headers, params=params)
+        data = r.json()
+
+        if "errors" in data:
+            raise Exception(data["errors"])
+
+        payments.extend(data.get("payments", []))
+        cursor = data.get("cursor")
+
+        if not cursor:
+            break
+
+    # Extract order_ids from payments
+    payment_order_ids = set()
     payment_amounts = []
+
+    for p in payments:
+        money = p.get("amount_money", {}).get("amount", 0)
+        payment_amounts.append(money)
+        order_id = p.get("order_id")
+        if order_id:
+            payment_order_ids.add(order_id)
+
+    # ---------------------------------------------------------
+    # 2. FETCH ORDERS API (authoritative list of order details)
+    # ---------------------------------------------------------
+    orders_url = "https://connect.squareup.com/v2/orders/search"
+    orders = []
+    cursor = None
 
     while True:
         body = {
@@ -127,7 +164,7 @@ def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
             "query": {
                 "filter": {
                     "date_time_filter": {
-                        "created_at": {
+                        "updated_at": {   # IMPORTANT: updated_at, not created_at
                             "start_at": start,
                             "end_at": end
                         }
@@ -138,40 +175,63 @@ def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
                 }
             }
         }
-    
+
         if cursor:
             body["cursor"] = cursor
 
-
-        r = requests.post(url, headers=headers, json=body)
+        r = requests.post(orders_url, headers=headers, json=body)
         data = r.json()
 
         if "errors" in data:
             raise Exception(data["errors"])
 
-        for order in data.get("orders", []):
-            money = order.get("total_money", {}).get("amount", 0)
-            revenue += money / 100.0
-            payment_amounts.append(money)
-
-            tax = order.get("total_tax_money",{}).get("amount",0)
-            taxes += tax / 100.0
-
-            tip = order.get("total_tip_money",{}).get("amount",0)
-            tips += tip / 100.0
-    
+        orders.extend(data.get("orders", []))
         cursor = data.get("cursor")
-
-        # print(f"Page {page}: {len(data.get('orders',[]))} orders")
-        # print(f"Cursor: {cursor}")
-        # page += 1
 
         if not cursor:
             break
 
+    # Deduplicate orders by order_id
+    unique_orders = {}
+    for o in orders:
+        oid = o.get("id")
+        if oid:
+            unique_orders[oid] = o
+
+    # ---------------------------------------------------------
+    # 3. MERGE PAYMENTS + ORDERS
+    # ---------------------------------------------------------
+    revenue = 0.0
+    taxes = 0.0
+    tips = 0.0
+
+    # Process orders that have payments
+    for oid in payment_order_ids:
+        order = unique_orders.get(oid)
+        if not order:
+            # Payment exists but order missing → Square sync delay
+            continue
+
+        money = order.get("total_money", {}).get("amount", 0)
+        tax = order.get("total_tax_money", {}).get("amount", 0)
+        tip = order.get("total_tip_money", {}).get("amount", 0)
+
+        revenue += money / 100.0
+        taxes += tax / 100.0
+        tips += tip / 100.0
+
+    # Process payments with NO order (offline payments, quick payments)
+    for p in payments:
+        if not p.get("order_id"):
+            money = p.get("amount_money", {}).get("amount", 0)
+            revenue += money / 100.0
+
+    # Remove tax + tip from revenue
     revenue -= (taxes + tips)
+
     print(payment_amounts)
     print(len(payment_amounts))
+
     return round(revenue, 2)
 
 def calculate_wage_spend(timesheets, hourly_rate: float):
