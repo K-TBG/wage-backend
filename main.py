@@ -6,6 +6,7 @@ import os
 import requests
 import time
 import sqlite3
+import fastapi
 
 #        ,-----------------------,      
 # |------|   BASIC ARCHITECTURE  |-------
@@ -23,15 +24,18 @@ API_PASSWORD = os.getenv("API_PASSWORD")
 if not API_PASSWORD:
     raise RuntimeError("API_PASSWORD is not set")
 
+API_PASSWORD_PARTNER = os.getenv("API_PASSWORD")
+if not API_PASSWORD_PARTNER:
+    raise RuntimeError("API_PASSWORD_PARTNER is not set")
 try:
     STORE_CONFIG = json.loads(os.getenv("STORE_CONFIG"))
 except Exception as e:
     raise RuntimeError(f"Failed to load STORE_CONFIG: {e}")
 
 category_map = { #A FULL LIST OF CORRESPONDING CATEGORIES NEEDS TO BE BUILT FOR ALL SITES
-    "food":["mains","piano plates"],
-    "coffee":["specialty coffee","iced coffee"],
-    "alcohol":["beers","wines","cocktails"]
+    "food":["Burgers & Salads","Piano Plates","Smashed Burgers","Fully Loaded Wraps","House Burgers","Chicken Tenders","Sides","Rainbow Bowls","Kids Menu","Lunch","Pastries","Cakes","Bowls","Brunch","Pinsas","Desserts","Beringer's Brunch","Main Menu","All Day Waffles","Cakes / Pastries"],
+    "coffee":["Specialty Coffee","Iced Drinks","Hot Drinks","Coffee (Hot)","Summer Menu","Handcrafted Iced Drinks","Specialty Loose Leaf Tea","Hot Drinks & Teas"],
+    "alcohol":["Classic Cocktails","House Cocktails","Beer / Cider","White Wine","Spirits","Spritz","Rose & Orange Wines","Red Wines","House Mocktails","Gin","Tequila / Mezcal","Sparkling Wines","Rum","Cognac / Brandy","Whisky","Liqueurs & Aperitifs","Lyres 0%","Draught Beer / Cider","Spritzes & Summer Specials","Canned Beer / Cider","Vodka","Rose Wine","Red Wine","Whiskey","Liqueurs","Mocktails","Tequila","Other Spirits","Sparkling & Champagne","Dessert / Brunch Cocktails"]
     }
 
 #        ,-----------------------,      
@@ -41,6 +45,10 @@ category_map = { #A FULL LIST OF CORRESPONDING CATEGORIES NEEDS TO BE BUILT FOR 
 
 def verify_password(password: str = Header(None)):
     if password != API_PASSWORD:
+        raise HTTPException(status_code=401, detail="Invalid or missing password")
+
+def verify_password_partner(password: str = Header(None)):
+    if password != API_PASSWORD_PARTNER:
         raise HTTPException(status_code=401, detail="Invalid or missing password")
 
 def get_store_keys(store_id:str):
@@ -86,20 +94,6 @@ def fetch_deputy_data(deputy_key: str, deputy_company_id: int, date: str):
     data = r.json()
     
     return data
-
-
-    url = "https://connect.squareup.com/v2/orders/search"
-    headers = {
-                "Authorization": f"Bearer {square_key}",
-                "Square-Version": "2025-01-23",
-                "Content-Type": "application/json"
-            }
-    cursor = None
-
-
-    
-
-    return ()
 
 def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
     start = f"{date}T00:00:00Z"
@@ -305,6 +299,15 @@ def wage_spend(store_id: str, date: str, password: str = Header(None)):
         "ideal_revenue": ideal_revenue,
         "ideal_hours": ideal_hours
     }
+
+@app.get("/ballymore-report")
+def ballymore_report(password:str = Header(None)):
+    verify_password_partner(password)
+
+    #retrieve information from a stored database. Program needs to run every evening at 3am to collect daily sales and populate
+    #the database. Information may only be stored for 3 months before being overwritten.
+
+    return()
 
 @app.get("/weekly-report")
 def weekly_report(start:str, password: str = Header(None)):
