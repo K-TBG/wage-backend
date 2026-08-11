@@ -223,9 +223,6 @@ def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
     # Remove tax + tip from revenue
     revenue -= (taxes + tips)
 
-    print(payment_amounts)
-    print(len(payment_amounts))
-
     return round(revenue, 2)
 
 def calculate_wage_spend(timesheets, hourly_rate: float):
@@ -322,7 +319,7 @@ def weekly_report(start:str, password: str = Header(None)):
     #7 day range:
     days = [(start_date + timedelta(days=i)) for i in range (7)]
     rows = []
-
+    Number_of_Calculations = 0
     #Loop through all locations
     for store_id, store_info in STORE_CONFIG.items():
         square_key = store_info["square"]
@@ -351,6 +348,10 @@ def weekly_report(start:str, password: str = Header(None)):
                 "hours":wage_data["total_hours"],
                 "timesheets":wage_data["timesheet_count"]
                 })
+            Number_of_Calculations += 1
+
+    print("Finished request.")
+    print(Number_of_Calculations)
     return rows
 
 #        ,-----------------------,
