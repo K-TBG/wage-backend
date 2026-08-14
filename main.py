@@ -1,3 +1,8 @@
+#        ,-----------------------,      
+# |------|   ESSENTIAL IMPORTS   |-------
+#        '-----------------------'
+
+
 from fastapi import FastAPI, HTTPException, Header
 from dotenv import load_dotenv
 from datetime import datetime, date, timedelta
@@ -8,16 +13,17 @@ import time
 import sqlite3
 import fastapi
 
+#TODO: Finish revenue.db for ballymore monthly reports (daily revenue builder, ballymore reporting endpoint)
+#Fix the fetch_square_revenue spaghetti code WITHOUT breaking it (good luck)
+#Add square debugging endpoints
+
 #        ,-----------------------,      
 # |------|   BASIC ARCHITECTURE  |-------
 #        '-----------------------'
 
 app = FastAPI()
-
 average_rate = 17.8
 DEPUTY_BASE_URL = "https://02ccfd29062105.uk.deputy.com"
-
-# Load environment
 load_dotenv()
 
 API_PASSWORD = os.getenv("API_PASSWORD")
@@ -27,12 +33,14 @@ if not API_PASSWORD:
 API_PASSWORD_PARTNER = os.getenv("API_PASSWORD")
 if not API_PASSWORD_PARTNER:
     raise RuntimeError("API_PASSWORD_PARTNER is not set")
+# Merge the above into one password checker? Might need lots of stored passwords in future
+
 try:
-    STORE_CONFIG = json.loads(os.getenv("STORE_CONFIG"))
+    STORE_CONFIG = json.loads(os.getenv("STORE_CONFIG")) #Make sure STORE_CONFIG still exists
 except Exception as e:
     raise RuntimeError(f"Failed to load STORE_CONFIG: {e}")
 
-category_map = { #A FULL LIST OF CORRESPONDING CATEGORIES NEEDS TO BE BUILT FOR ALL SITES
+category_map = {
     "food":["Burgers & Salads","Piano Plates","Smashed Burgers","Fully Loaded Wraps","House Burgers","Chicken Tenders","Sides","Rainbow Bowls","Kids Menu","Lunch","Pastries","Cakes","Bowls","Brunch","Pinsas","Desserts","Beringer's Brunch","Main Menu","All Day Waffles","Cakes / Pastries"],
     "coffee":["Specialty Coffee","Iced Drinks","Hot Drinks","Coffee (Hot)","Summer Menu","Handcrafted Iced Drinks","Specialty Loose Leaf Tea","Hot Drinks & Teas"],
     "alcohol":["Classic Cocktails","House Cocktails","Beer / Cider","White Wine","Spirits","Spritz","Rose & Orange Wines","Red Wines","House Mocktails","Gin","Tequila / Mezcal","Sparkling Wines","Rum","Cognac / Brandy","Whisky","Liqueurs & Aperitifs","Lyres 0%","Draught Beer / Cider","Spritzes & Summer Specials","Canned Beer / Cider","Vodka","Rose Wine","Red Wine","Whiskey","Liqueurs","Mocktails","Tequila","Other Spirits","Sparkling & Champagne","Dessert / Brunch Cocktails"]
@@ -42,33 +50,77 @@ category_map = { #A FULL LIST OF CORRESPONDING CATEGORIES NEEDS TO BE BUILT FOR 
 # |------|     FUNCTION LIST     |-------
 #        '-----------------------'
 
+def init_db(): #Database - WIP
+    conn = sqlite3.connect("revenue.db")
+    cur = conn.cursor()
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS daily_revenue(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT NOT NULL,
+    location TEXT NOT NULL,
+    category TEXT NOT NULL,
+    amount REAL NOT NULL,
+    created_at TEXT NOT NULL
+    )
+""")
+    conn.commit()
+    conn.close()
+init_db()
 
-def verify_password(password: str = Header(None)):
+def map_category_to_section(square_category_name): #Scans inputted square category to return the relevant "section" listed in category_map
+    for section, names in category_map.items():
+        if square_category_name in names:
+            return section
+    return "other"
+
+def insert_daily_revenue(date_str, location, category, amount): #WORK IN PROGESS - will be called daily to store revenue data in revenue.db
+    conn = sqlite3.connect("revenue.db")
+    cur = conn.cursor()
+
+    cur.execute("""
+    INSERT INTO daily_revenue (date, location, category, amount 
+    VALUES (?, ?, ?, ?, datetime('now'))
+    """,(date_str, location, category, amount))
+    conn.commit()
+    conn.close()
+
+def cleanup_old_revenue(): #WORK IN PROGESS - will be called daily to cull old data stored in revenue.db
+    conn=sqlite3.connect("revenue.db")
+    cur=conn.cursor()
+
+    cur.execute("""
+    DELETE FROM daily_revenue
+    WHERE data < date('now','-90 days')
+""")
+    conn.commit()
+    conn.close()
+
+def verify_password(password: str = Header(None)): #Checks password against string stored in .env
     if password != API_PASSWORD:
         raise HTTPException(status_code=401, detail="Invalid or missing password")
 
-def verify_password_partner(password: str = Header(None)):
+def verify_password_partner(password: str = Header(None)): #Checks password against string stored in .env, for Ballymore reports
     if password != API_PASSWORD_PARTNER:
         raise HTTPException(status_code=401, detail="Invalid or missing password")
 
-def get_store_keys(store_id:str):
+def get_store_keys(store_id:str): #Retrieves store API keys from STORE_CONFIG
     store = STORE_CONFIG.get(store_id)
     if not store:
         raise HTTPException(status_code=400, detail=f"Unknown store_id: {store_id}")
     return store["square"], store["deputy"]
 
-def get_store_ids(store_id: str):
+def get_store_ids(store_id: str): #Retrieves store IDs from STORE_CONFIG
     store = STORE_CONFIG.get(store_id)
     if not store:
         raise HTTPException(status_code=400, detail=f"Unknown store_id: {store_id}")
     return store["square_id"], store["deputy_id"]
 
-def fetch_deputy_data(deputy_key: str, deputy_company_id: int, date: str):
+def fetch_deputy_data(deputy_key: str, deputy_company_id: int, date: str): #API request to Deputy for Timesheet data.
     
     headers = {"Authorization": f"Bearer {deputy_key}"}
 
     ou_url = f"{DEPUTY_BASE_URL}/api/v1/resource/OperationalUnit/QUERY"
-    ou_resp = requests.post(ou_url, headers=headers, json={})
+    ou_resp = requests.post(ou_url, headers=headers, json={}) #ou -> Operational Unit. Used to filter by store within deputy.
     operational_units = ou_resp.json()
 
     url = f"{DEPUTY_BASE_URL}/api/v1/resource/Timesheet/QUERY"
@@ -95,7 +147,14 @@ def fetch_deputy_data(deputy_key: str, deputy_company_id: int, date: str):
     
     return data
 
-def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
+def fetch_square_revenue(square_key: str, square_location_id: str, date: str): #API request to Square for Revenue data. This one is a MESS, but it works
+    #Annoyingly complex. Square process closed payments and pending payments using different API queries. PAYMENTS handles pending,
+    #ORDERS handles complete (and also contains item-level details.) This function checks both queries and merges them, ensuring no
+    #duplicates are returned by checking orderID (a lot of payments have both a PAYMENT log and an ORDER log)
+
+    #This function started out as ~15 lines and became a total maze as I learned about the quirks of Square API. It needs to be 
+    #made way less confusing.
+
     start = f"{date}T00:00:00Z"
     end = f"{date}T23:59:59Z"
 
@@ -105,9 +164,6 @@ def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
         "Content-Type": "application/json"
     }
 
-    # ---------------------------------------------------------
-    # 1. FETCH PAYMENTS API (authoritative list of payments)
-    # ---------------------------------------------------------
     payments_url = "https://connect.squareup.com/v2/payments"
     payments = []
     cursor = None
@@ -134,7 +190,6 @@ def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
         if not cursor:
             break
 
-    # Extract order_ids from payments
     payment_order_ids = set()
     payment_amounts = []
 
@@ -145,9 +200,7 @@ def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
         if order_id:
             payment_order_ids.add(order_id)
 
-    # ---------------------------------------------------------
-    # 2. FETCH ORDERS API (authoritative list of order details)
-    # ---------------------------------------------------------
+
     orders_url = "https://connect.squareup.com/v2/orders/search"
     orders = []
     cursor = None
@@ -158,7 +211,7 @@ def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
             "query": {
                 "filter": {
                     "date_time_filter": {
-                        "updated_at": {   # IMPORTANT: updated_at, not created_at
+                        "updated_at": {   # IMPORTANT: updated_at. This marks COMPLETED payments, as these will be flagged as 'updated'
                             "start_at": start,
                             "end_at": end
                         }
@@ -185,16 +238,12 @@ def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
         if not cursor:
             break
 
-    # Deduplicate orders by order_id
-    unique_orders = {}
+    unique_orders = {} #This is where we ensure no duplicates exist.
     for o in orders:
         oid = o.get("id")
         if oid:
             unique_orders[oid] = o
 
-    # ---------------------------------------------------------
-    # 3. MERGE PAYMENTS + ORDERS
-    # ---------------------------------------------------------
     revenue = 0.0
     taxes = 0.0
     tips = 0.0
@@ -202,8 +251,7 @@ def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
     # Process orders that have payments
     for oid in payment_order_ids:
         order = unique_orders.get(oid)
-        if not order:
-            # Payment exists but order missing → Square sync delay
+        if not order: #This is to highlight when a payment exists with no order. Rare, but it has happened, and it was annoying.
             continue
 
         money = order.get("total_money", {}).get("amount", 0)
@@ -214,18 +262,16 @@ def fetch_square_revenue(square_key: str, square_location_id: str, date: str):
         taxes += tax / 100.0
         tips += tip / 100.0
 
-    # Process payments with NO order (offline payments, quick payments)
     for p in payments:
         if not p.get("order_id"):
             money = p.get("amount_money", {}).get("amount", 0)
             revenue += money / 100.0
 
-    # Remove tax + tip from revenue
-    revenue -= (taxes + tips)
+    revenue -= (taxes + tips) #Revenue should not include taxes, nor tips
 
-    return round(revenue, 2)
+    return round(revenue, 2) #I'll fix this mess one day...
 
-def calculate_wage_spend(timesheets, hourly_rate: float):
+def calculate_wage_spend(timesheets, hourly_rate: float):#Dead simple. Compares Timesheets with revenue to give a wage spend figure.
     
     total_hours = 0
 
@@ -250,7 +296,7 @@ def calculate_wage_spend(timesheets, hourly_rate: float):
         "entries": timesheets
     }
 
-def time_processing (date_raw):
+def time_processing (date_raw): #Just used to strip and format inputted date parameters to make life easier integrating with different API.
     date = datetime.strptime(date_raw, "%Y-%m-%d")
     
     start = date.replace(hour = 0, minute = 0, second = 0, microsecond = 0)
@@ -260,11 +306,18 @@ def time_processing (date_raw):
     end_unix = int(end.timestamp())
     return start_unix, end_unix
 
+def build_daily_revenue(date_str):#WIP. This will be the function called by Render's cron to build revenue.db, needs a lot of work.
+    print(f"Beginning daily revenue scan for {date_str}")
+
+    for store_id, store_info in STORE_CONFIG.items():
+        print(f"Processing store: {store_id}")
+    
+
 #        ,-----------------------,
 # |------|     API ENDPOINTS     |-------|
 #        '-----------------------'
 
-@app.get("/wage-spend")
+@app.get("/wage-spend") #Endpoint called in the wage_tracker app. Simply returns live daily wage spend by using calculate_wage_spend and a live time figure.
 def wage_spend(store_id: str, date: str, password: str = Header(None)):
     verify_password(password)
 
@@ -297,16 +350,18 @@ def wage_spend(store_id: str, date: str, password: str = Header(None)):
         "ideal_hours": ideal_hours
     }
 
-@app.get("/ballymore-report")
+@app.get("/ballymore-report") #WIP. This will be used for Ballymore to make a monthly report on sites they need data for. 
 def ballymore_report(password:str = Header(None)):
     verify_password_partner(password)
 
     #retrieve information from a stored database. Program needs to run every evening at 3am to collect daily sales and populate
     #the database. Information may only be stored for 3 months before being overwritten.
-
+    #I'm using a database because calculating a whole month's revenue for multiple sites might take too long.
+    #Data returned must be categorised (food, coffee, alcohol etc)
     return()
 
-@app.get("/weekly-report")
+@app.get("/weekly-report") #I made this to make my life easier generating weekly wage spend reports. Loops through all shops and calculates 
+                            #their wage spend, per day, and returns the data in neat rows for power query to display in excel.
 def weekly_report(start:str, password: str = Header(None)):
     verify_password(password)
 
@@ -357,6 +412,9 @@ def weekly_report(start:str, password: str = Header(None)):
 #        ,-----------------------,
 # |------|  DEBUGGING ENDPOINTS  |-------|
 #        '-----------------------'
+
+#I made these to debug certain aspects of the system, should I break anything (which happens way too often)
+#I need to make square versions, for when I break square. Right now I've only ever broken Deputy so only Deputy ones exist.
 
 @app.get("/debug-deputy")
 def debug_deputy(store_id: str, date: str, password: str = Header(None)):
